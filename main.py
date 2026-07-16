@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 from datetime import datetime, timedelta
+import os  # 👈 Importante para leer el puerto de internet
 
 app = FastAPI()
 
@@ -189,7 +190,7 @@ def obtener_reporte_30_dias():
                 "nombre": al["nombre"],
                 "apellido": al.get("apellido") or "",
                 "horario": al["horario"],
-                "registro_diario": registro_diario,
+                "registro_diario": registro_diario,  # 👈 Arreglado el error visual de VS Code
                 "total_clases": total_clases,
                 "asistencias": asistencias_count,
                 "faltas": faltas_count,
@@ -203,22 +204,19 @@ def obtener_reporte_30_dias():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 7. Reporte de Historial Mensual (¡Recuperado!)
+# 7. Reporte de Historial Mensual
 @app.get("/reporte-historial")
 def obtener_reporte_historial(anio: int, mes: int, horario: str):
     try:
-        # Obtener alumnos del horario solicitado
         alumnos_res = supabase.table("alumnos").select("*").eq("horario", horario).execute()
         alumnos = alumnos_res.data
 
-        # Definir rango de fechas para el mes
         fecha_inicio = f"{anio}-{mes:02d}-01"
         if mes == 12:
             fecha_fin = f"{anio + 1}-01-01"
         else:
             fecha_fin = f"{anio}-{mes + 1:02d}-01"
 
-        # Traer asistencias filtradas por rango mensual
         asistencias_res = supabase.table("asistencias") \
             .select("*") \
             .gte("fecha", fecha_inicio) \
@@ -261,3 +259,12 @@ def obtener_reporte_historial(anio: int, mes: int, horario: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== CONFIGURACIÓN DE ARRANQUE PARA INTERNET ====================
+if __name__ == "__main__":
+    import uvicorn
+    
+    puerto = int(os.environ.get("PORT", 8000))
+    
+    uvicorn.run(app, host="0.0.0.0", port=puerto)
